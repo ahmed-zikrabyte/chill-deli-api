@@ -1,0 +1,71 @@
+{
+  "name": "social-notch-api",
+  "version": "1.0.0",
+  "description": "API for Social Notch",
+  "main": "dist/app.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
+    "build": "biome check --write . && tsc",
+    "start": "node dist/app.js",
+    "lint": "biome check .",
+    "lint:fix": "biome check --apply .",
+    "format": "biome format . --write",
+    "format:check": "biome format .",
+    "fix-all": "npm run lint:fix && npm run format",
+    "type-check": "tsc --noEmit --incremental",
+    "upgrade": "npx npm-check-updates -u && npm install",
+    "prepare": "lefthook install"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.772.0",
+    "axios": "^1.8.4",
+    "bcryptjs": "^2.4.3",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.1.5",
+    "handlebars": "^4.7.8",
+    "helmet": "^7.1.0",
+    "joi": "^17.12.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.2.1",
+    "morgan": "^1.10.0",
+    "multer": "1.4.5-lts.2",
+    "node-cron": "^3.0.3",
+    "puppeteer": "^24.7.2",
+    "puppeteer-core": "^24.7.2",
+    "sharp": "^0.33.5",
+    "sib-api-v3-sdk": "^8.5.0",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.1.1",
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/compression": "^1.7.5",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/morgan": "^1.9.9",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.15.17",
+    "@types/node-cron": "^3.0.11",
+    "@types/supertest": "^6.0.2",
+    "lefthook": "^1.12.2",
+    "lint-staged": "^16.1.2",
+    "supertest": "^6.3.4",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.3.3",
+    "ultracite": "5.0.36"
+  },
+  "lint-staged": {
+    "src/**/*.{ts}": [
+      "biome check --write"
+    ]
+  }
+}

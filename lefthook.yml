@@ -1,0 +1,29 @@
+# pre-commit:
+#   jobs:
+#     - run: npx ultracite format
+#       glob:
+#         - "*.js"
+#         - "*.jsx"
+#         - "*.ts"
+#         - "*.tsx"
+#         - "*.json"
+#         - "*.jsonc"
+#         - "*.css"
+#       stage_fixed: true
+
+# Install hooks with: pnpm lefthook install
+pre-commit:
+  parallel: true
+  commands:
+    format-and-lint:
+      run: pnpm exec lint-staged # formats only staged files
+
+commit-msg:
+  commands:
+    commitlint:
+      run: pnpm exec commitlint --edit {1} # {1} = path to commit‑msg file
+
+pre-push:
+  commands:
+    build:
+      run: pnpm run build # blocks push if build fails
