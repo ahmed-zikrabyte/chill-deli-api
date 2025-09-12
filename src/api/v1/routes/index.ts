@@ -1,5 +1,5 @@
 import express from "express";
-import adminRoutes from "./admin/admin.routes";
+import adminRoutes from "./admin/auth.admin.routes";
 import publicRoutes from "./public/public.routes";
 import userRoutes from "./user/user.routes";
 

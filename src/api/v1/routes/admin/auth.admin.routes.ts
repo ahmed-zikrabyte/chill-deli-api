@@ -1,19 +1,10 @@
-import express, {
-  type NextFunction,
-  type Request,
-  type Response,
-} from "express";
+import express from "express";
 import AdminAuthController from "../../controllers/admin/auth.admin.controller";
 
-const adminAuthRouter = express.Router();
-const adminAuthController = new AdminAuthController();
+const router = express.Router();
+const authCtrl = new AdminAuthController();
 
-// ===>  v1/admin/auth/
+router.post("/register", authCtrl.register);
+router.post("/login", authCtrl.login);
 
-adminAuthRouter.post(
-  "/login",
-  (req: Request, res: Response, next: NextFunction) =>
-    adminAuthController.login(req, res, next)
-);
-
-export default adminAuthRouter;
+export default router;

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
+import type { SignOptions } from "jsonwebtoken";
 
 /**
  * Loads environment variables based on the current NODE_ENV
@@ -46,16 +47,17 @@ export const loadEnv = (): void => {
 };
 
 loadEnv();
+
 export const ENV = {
   app: {
     nodeEnv: process.env.NODE_ENV || "development",
-    port: process.env.PORT || "8000",
+    port: parseInt(process.env.PORT || "8000", 10),
     apiPrefix: process.env.API_PREFIX || "/api",
     apiVersion: process.env.API_VERSION || "v1",
     companyName: process.env.COMPANY_NAME || "Social Notch",
     userUrl: process.env.UI_URL || "http://localhost:3000",
     adminUrl: process.env.ADMIN_URL || "http://localhost:3001",
-    vendorUrl: process.env.VENDOR_URK || "http://localhost:3002",
+    vendorUrl: process.env.VENDOR_URL || "http://localhost:3002",
   },
   db: {
     mongoUri: process.env.MONGO_URI || "mongodb://localhost:27017/socialnotch",
@@ -68,10 +70,11 @@ export const ENV = {
   },
   jwt: {
     secret: process.env.JWT_SECRET || "default_jwt_secret_dev_only",
-    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+    expiresIn: (process.env.JWT_EXPIRES_IN as SignOptions["expiresIn"]) || "7d",
     refreshSecret:
       process.env.JWT_REFRESH_SECRET || "default_refresh_secret_dev_only",
-    refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "30d",
+    refreshExpiresIn:
+      (process.env.JWT_REFRESH_EXPIRES_IN as SignOptions["expiresIn"]) || "30d",
   },
   email: {
     brevo: {

@@ -1,13 +1,37 @@
 import jwt, { type SignOptions } from "jsonwebtoken";
+import type { Types } from "mongoose";
 import { ENV } from "../../../../config/env";
 import { HTTP } from "../../../../config/http-status.config";
 import { AppError } from "../../../../middleware/error.middleware";
-import { UserModel } from "../../../../models/user.model";
+import { AdminModel } from "../../../../models/admin.model";
 import type { ServiceResponse } from "../../../../typings";
 
 export default class AdminAuthService {
-  private readonly userModel = UserModel;
-  private readonly jwtSecret = ENV.jwt.secret;
+  async register({
+    email,
+    password,
+  }: {
+    email: string;
+    password: string;
+  }): Promise<ServiceResponse> {
+    const existing = await AdminModel.findOne({ email });
+    if (existing) throw new AppError("Admin already exists", 400);
+
+    const admin = await AdminModel.create({ email, password });
+
+    const adminId = (admin._id as Types.ObjectId).toString();
+    const token = this.generateToken(adminId);
+
+    return {
+      data: {
+        token,
+        admin: { id: adminId, email: admin.email, role: admin.role },
+      },
+      message: "Admin registered successfully",
+      status: HTTP.CREATED,
+      success: true,
+    };
+  }
 
   async login({
     email,
@@ -15,38 +39,31 @@ export default class AdminAuthService {
   }: {
     email: string;
     password: string;
-  }): ServiceResponse {
-    try {
-      const user = await this.userModel.findOne({ email, role: "admin" });
-      if (!user) throw new AppError("User not found", 404);
+  }): Promise<ServiceResponse> {
+    const admin = await AdminModel.findOne({ email }).select("+password");
+    if (!admin) throw new AppError("Invalid credentials", HTTP.UNAUTHORIZED);
 
-      const isPasswordMatched = await user.comparePassword(password);
-      if (!isPasswordMatched) throw new AppError("Invalid credentials", 401);
+    const isMatch = await admin.comparePassword(password);
+    if (!isMatch) throw new AppError("Invalid credentials", HTTP.UNAUTHORIZED);
 
-      const token = this.generateToken(user._id.toString());
-      return {
-        data: { token },
-        message: "Login successful",
-        status: HTTP.OK,
-        success: true,
-      };
-    } catch (error) {
-      if (error instanceof AppError) throw error;
+    const adminId = (admin._id as Types.ObjectId).toString();
+    const token = this.generateToken(adminId);
 
-      throw new AppError((error as Error).message, 500);
-    }
+    return {
+      data: {
+        token,
+        admin: { id: adminId, email: admin.email, role: admin.role },
+      },
+      message: "Login successful",
+      status: HTTP.OK,
+      success: true,
+    };
   }
 
-  private generateToken(userId: string): string {
-    const expiresIn = ENV.jwt.expiresIn || "7d";
-
-    const options: SignOptions = {
-      expiresIn: expiresIn as any,
-    };
-    return jwt.sign(
-      { id: userId, type: "admin" },
-      this.jwtSecret,
-      options
-    ) as string;
+  private generateToken(adminId: string): string {
+    if (!ENV.jwt.secret) throw new Error("JWT secret not defined");
+    const payload = { id: adminId, type: "admin" };
+    const options: SignOptions = { expiresIn: ENV.jwt.expiresIn || "7d" };
+    return jwt.sign(payload, ENV.jwt.secret as jwt.Secret, options);
   }
 }
