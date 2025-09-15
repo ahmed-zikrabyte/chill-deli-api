@@ -1,14 +1,12 @@
 import express from "express";
-import AuthController from "../../controllers/user/auth.user.controller";
+import { protectUser } from "../../../../middleware/userAuth.middleware";
+import userAuthRouter from "./auth.user.routes";
 
-const userRoutes: express.Router = express.Router();
+const adminRoutes: express.Router = express.Router();
 
-// Auth routes
+// ===>  v1/admin/
+adminRoutes.use("/auth", userAuthRouter);
 
-// // Protected routes
-const authController = new AuthController();
+adminRoutes.use(protectUser);
 
-userRoutes.post("/auth/login", authController.login.bind(authController));
-userRoutes.post("/auth/register", authController.register.bind(authController));
-
-export default userRoutes;
+export default adminRoutes;

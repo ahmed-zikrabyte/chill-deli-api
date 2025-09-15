@@ -1,4 +1,5 @@
 import express from "express";
+import { protectSuperAdmin } from "../../../../middleware/adminAuth.middleware";
 import adminAuthRouter from "./auth.admin.routes";
 
 const adminRoutes: express.Router = express.Router();
@@ -6,8 +7,6 @@ const adminRoutes: express.Router = express.Router();
 // ===>  v1/admin/
 adminRoutes.use("/auth", adminAuthRouter);
 
-//use auth middleware only after auth routes
-// adminAdminsRouter.use(adminAuthMiddleware);
+adminRoutes.use(protectSuperAdmin);
 
-// adminRoutes.use("/statuses", adminStatusRouter);
 export default adminRoutes;

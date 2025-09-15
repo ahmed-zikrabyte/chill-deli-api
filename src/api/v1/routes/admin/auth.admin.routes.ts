@@ -8,12 +8,16 @@ import AdminAuthController from "../../controllers/admin/auth.admin.controller";
 const adminAuthRouter = express.Router();
 const adminAuthController = new AdminAuthController();
 
-// ===>  v1/admin/auth/
-
 adminAuthRouter.post(
   "/login",
   (req: Request, res: Response, next: NextFunction) =>
     adminAuthController.login(req, res, next)
+);
+
+adminAuthRouter.post(
+  "/register",
+  (req: Request, res: Response, next: NextFunction) =>
+    adminAuthController.register(req, res, next)
 );
 
 export default adminAuthRouter;

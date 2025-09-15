@@ -1,12 +1,17 @@
-// import express from "express";
-// import AuthController from "../../controllers/user/auth.user.controller";
-// const userRoutes: express.Router = express.Router();
+import express from "express";
+import AuthController from "../../controllers/user/auth.user.controller";
 
-// // Auth routes
+const userAuthRouter: express.Router = express.Router();
+const authController = new AuthController();
 
-// // // Protected routes
-// const authController = new AuthController();
+// Login
+userAuthRouter.post("/login", authController.login);
 
-// userRoutes.post("/auth/login", authController.login.bind(authController));
+// OTP-based registration
+userAuthRouter.post("/register/send-otp", authController.sendRegistrationOtp);
+userAuthRouter.post(
+  "/register/verify-otp",
+  authController.verifyRegistrationOtp
+);
 
-// export default userRoutes;
+export default userAuthRouter;
