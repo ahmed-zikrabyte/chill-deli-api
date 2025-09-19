@@ -3,14 +3,23 @@ import mongoose, { Schema } from "mongoose";
 export interface IProduct {
   name: string;
   description: string;
-  price: number;
+  bannerImages: {
+    url: string;
+    filename: string;
+    contentType: string;
+  }[];
   images: {
     url: string;
     filename: string;
     contentType: string;
   }[];
+  variants: {
+    price: number;
+    weight: string;
+  }[];
   slug: string;
-  status: string;
+  deliveryStatus: "available-for-delivery" | "not-available-for-delivery";
+  stockStatus: "in-stock" | "out-of-stock";
   isActive: boolean;
   isDeleted: boolean;
 }
@@ -19,7 +28,13 @@ const productSchema = new Schema<IProduct>(
   {
     name: { type: String, required: true, trim: true },
     description: { type: String, required: true, trim: true },
-    price: { type: Number, required: true, min: 0 },
+    bannerImages: [
+      {
+        url: String,
+        filename: String,
+        contentType: String,
+      },
+    ],
     images: [
       {
         url: String,
@@ -27,12 +42,24 @@ const productSchema = new Schema<IProduct>(
         contentType: String,
       },
     ],
-    slug: { type: String, required: true },
-    status: {
+    variants: [
+      {
+        price: { type: Number, required: true },
+        weight: { type: String, required: true },
+      },
+    ],
+    slug: { type: String, required: true, trim: true, unique: true },
+    deliveryStatus: {
+      type: String,
+      enum: ["available-for-delivery", "not-available-for-delivery"],
+      default: "available-for-delivery",
+    },
+    stockStatus: {
       type: String,
       enum: ["in-stock", "out-of-stock"],
       default: "in-stock",
     },
+
     isActive: { type: Boolean, default: true },
     isDeleted: { type: Boolean, default: false },
   },

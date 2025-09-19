@@ -1,7 +1,7 @@
 import sharp from "sharp";
 
 /**
- * Recieves image buffer along with width and height, and returns a promise resolving to the cropped image buffer
+ * Receives image buffer along with width and height, and returns a promise resolving to the cropped image buffer
  * @param file
  * @param width
  * @param height
@@ -11,9 +11,6 @@ export const resizeImage = async (
   width: number,
   height: number
 ): Promise<Buffer> => {
-  try {
-    return await sharp(file).resize(width, height).toBuffer();
-  } catch (_error) {
-    throw _error;
-  }
+  // No try/catch needed because rethrowing does nothing
+  return await sharp(file).resize(width, height).toBuffer();
 };

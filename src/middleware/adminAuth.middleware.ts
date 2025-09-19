@@ -26,10 +26,7 @@ export const protectSuperAdmin = async (
     let token: string | undefined;
 
     // Extract token from Authorization header
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
+    if (req.headers.authorization?.startsWith("Bearer")) {
       token = req.headers.authorization.split(" ")[1];
     }
 
