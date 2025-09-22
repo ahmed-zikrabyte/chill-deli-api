@@ -1,21 +1,18 @@
-// import express from "express";
-// import { UserAddressController } from "../../controllers/user/address.user.controller";
+import express from "express";
+import { UserAddressController } from "../../controllers/user/address.user.controller";
 
-// const userAddressRoutes: express.Router = express.Router();
+const userAddressRoutes: express.Router = express.Router();
 
-// const userAddressController = new UserAddressController();
+const userAddressController = new UserAddressController();
 
-// userAddressRoutes.post("/create", userAddressController.createAddress);
-// userAddressRoutes.put("/edit/:addressId", userAddressController.editAddress);
-// userAddressRoutes.delete(
-//   "/delete/:addressId",
-//   userAddressController.deleteAddress
-// );
-// userAddressRoutes.get("/list", userAddressController.getAddresses);
+userAddressRoutes.post("/", userAddressController.createAddress);
+userAddressRoutes.patch("/:addressId", userAddressController.editAddress);
+userAddressRoutes.delete("/:addressId", userAddressController.deleteAddress);
+userAddressRoutes.get("/", userAddressController.getAddresses);
 
-// userAddressRoutes.get(
-//   "/courier-availability/:addressId",
-//   userAddressController.checkCourierAvailability
-// );
+userAddressRoutes.get(
+  "/calculate-fee/:addressId",
+  userAddressController.calculateDeliveryFee
+);
 
-// export default userAddressRoutes;
+export default userAddressRoutes;

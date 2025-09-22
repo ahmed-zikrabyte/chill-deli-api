@@ -13,6 +13,7 @@ export interface IUser {
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
   isActive?: boolean;
+  browniePoints: number;
   comparePassword: (password: string) => Promise<boolean>;
 }
 
@@ -42,6 +43,7 @@ const userSchema = new mongoose.Schema<IUser>(
       enum: ["user"],
       default: "user",
     },
+    browniePoints: { type: Number, default: 0 },
     profileImage: { type: String, required: false },
     resetPasswordToken: { type: String, required: false },
     resetPasswordExpires: { type: Date, required: false },

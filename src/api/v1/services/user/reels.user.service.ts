@@ -1,7 +1,9 @@
 import mongoose from "mongoose";
 import { HTTP } from "../../../../config/http-status.config";
 import { AppError } from "../../../../middleware/error.middleware";
+import { BrowniePointsModel } from "../../../../models/brownie-point.model";
 import { ReelModel } from "../../../../models/reels.model";
+import { UserModel } from "../../../../models/user.model";
 import type { ServiceResponse } from "../../../../typings";
 
 export default class UserReelService {
@@ -104,6 +106,8 @@ export default class UserReelService {
     reelId: string,
     userId: string
   ): Promise<ServiceResponse> => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
       if (
         !mongoose.Types.ObjectId.isValid(reelId) ||
@@ -112,7 +116,7 @@ export default class UserReelService {
         throw new AppError("Invalid reel ID or user ID", HTTP.BAD_REQUEST);
       }
 
-      const reel = await this.reelModel.findById(reelId);
+      const reel = await this.reelModel.findById(reelId).session(session);
       if (!reel || reel.isDeleted || !reel.isActive) {
         throw new AppError("Reel not found or inactive", HTTP.NOT_FOUND);
       }
@@ -120,6 +124,7 @@ export default class UserReelService {
       const userObjectId = new mongoose.Types.ObjectId(userId);
 
       // Add to fully watched if not already present
+      let earnedPoint = false;
       if (!reel.fullyWatched.includes(userObjectId)) {
         reel.fullyWatched.push(userObjectId);
 
@@ -128,22 +133,62 @@ export default class UserReelService {
           reel.views.push(userObjectId);
         }
 
-        await reel.save();
+        // Save reel first
+        await reel.save({ session });
+
+        // === Earn brownie point ===
+        // Check if already earned for this reel
+        const alreadyEarned = await BrowniePointsModel.findOne({
+          userId: userObjectId,
+          type: "earned",
+          reelId: reel._id,
+        }).session(session);
+
+        if (!alreadyEarned) {
+          // 1️⃣ Increment user's total brownie points
+          await UserModel.findByIdAndUpdate(
+            userObjectId,
+            { $inc: { browniePoints: 1 } },
+            { session }
+          );
+
+          // 2️⃣ Add a new history entry
+          await BrowniePointsModel.create(
+            [
+              {
+                userId: userObjectId,
+                type: "earned",
+                points: 1,
+                reelId: reel._id,
+                createdAt: new Date(),
+              },
+            ],
+            { session }
+          );
+
+          earnedPoint = true;
+        }
       }
+
+      await session.commitTransaction();
 
       return {
         data: {
           reel,
           totalFullyWatched: reel.fullyWatched.length,
+          browniePointEarned: earnedPoint,
         },
         message: "Reel marked as fully watched",
         status: HTTP.OK,
         success: true,
       };
     } catch (error) {
+      await session.abortTransaction();
       console.error(error);
       if (error instanceof AppError) throw error;
       throw new AppError((error as Error).message, HTTP.INTERNAL_SERVER_ERROR);
+    } finally {
+      session.endSession();
     }
   };
 
@@ -293,6 +338,7 @@ export default class UserReelService {
   // };
 
   // === GET REEL STATS ===
+
   getReelStats = async (reelId: string): Promise<ServiceResponse> => {
     try {
       if (!mongoose.Types.ObjectId.isValid(reelId)) {

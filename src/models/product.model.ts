@@ -14,6 +14,7 @@ export interface IProduct {
     contentType: string;
   }[];
   variants: {
+    _id: any;
     price: number;
     weight: string;
   }[];
