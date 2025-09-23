@@ -4,6 +4,7 @@ import userAddressRoutes from "./address.user.route";
 import userAuthRouter from "./auth.user.routes";
 import bannerUserRoutes from "./banner.user.routes";
 import userCouponRouter from "./coupon.user.routes";
+import eventRouter from "./event.user.routes";
 import orderUserRoutes from "./order.user.route";
 import userProductRouter from "./product.user.routes";
 import userReelRouter from "./reels.user.routes";
@@ -25,5 +26,6 @@ userRoutes.use("/address", userAddressRoutes);
 userRoutes.use("/banners", bannerUserRoutes);
 userRoutes.use("/reviews", reviewUserRoutes);
 userRoutes.use("/orders", orderUserRoutes);
+userRoutes.use("/events", eventRouter);
 
 export default userRoutes;

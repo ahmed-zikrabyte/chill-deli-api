@@ -83,4 +83,67 @@ export default class UserStoreService {
       throw new AppError((error as Error).message, HTTP.INTERNAL_SERVER_ERROR);
     }
   };
+
+  getAllSortedByDistance = async (
+    userLat: number,
+    userLng: number,
+    page: number = 1,
+    limit: number = 10
+  ): Promise<ServiceResponse> => {
+    try {
+      if (isNaN(userLat) || isNaN(userLng)) {
+        throw new AppError("Invalid coordinates", HTTP.BAD_REQUEST);
+      }
+
+      // Fetch all active, non-deleted stores
+      const stores = await this.storeModel
+        .find({ isActive: true, isDeleted: false })
+        .populate("products");
+
+      // Calculate distance for each store
+      const storesWithDistance = stores.map((store) => {
+        const R = 6371; // Earth radius in km
+        const dLat = ((store.location.lat - userLat) * Math.PI) / 180;
+        const dLng = ((store.location.lng - userLng) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos((userLat * Math.PI) / 180) *
+            Math.cos((store.location.lat * Math.PI) / 180) *
+            Math.sin(dLng / 2) ** 2;
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distance = R * c;
+        return { ...store.toObject(), distance };
+      });
+
+      // Sort by distance
+      storesWithDistance.sort((a, b) => a.distance - b.distance);
+
+      // Apply pagination
+      const total = storesWithDistance.length;
+      const totalPages = Math.ceil(total / limit);
+      const start = (page - 1) * limit;
+      const paginatedStores = storesWithDistance.slice(start, start + limit);
+
+      return {
+        data: {
+          stores: paginatedStores,
+          pagination: {
+            currentPage: page,
+            totalPages,
+            totalItems: total,
+            itemsPerPage: limit,
+            hasNext: page < totalPages,
+            hasPrev: page > 1,
+          },
+        },
+        message: "Stores fetched successfully, sorted by distance",
+        status: HTTP.OK,
+        success: true,
+      };
+    } catch (error) {
+      console.error(error);
+      if (error instanceof AppError) throw error;
+      throw new AppError((error as Error).message, HTTP.INTERNAL_SERVER_ERROR);
+    }
+  };
 }

@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 import mongoose, { type Types } from "mongoose";
 import { chromium } from "playwright";
 import { HTTP } from "../../../../config/http-status.config";
@@ -325,8 +325,7 @@ export class OrderUserService {
       if (!order) throw new AppError("Order not found", HTTP.NOT_FOUND);
 
       // 2️⃣ Verify Razorpay signature
-      const body =
-        orderData.razorpayOrderId + "|" + orderData.razorpayPaymentId;
+      const body = `${orderData.razorpayOrderId}|${orderData.razorpayPaymentId}`;
       const expectedSignature = crypto
         .createHmac("sha256", process.env.RAZOR_PAY_SECRET_KEY!)
         .update(body.toString())
@@ -429,7 +428,7 @@ export class OrderUserService {
         .lean();
 
       // 5️⃣ Mark coupon as used after successful payment
-      if (order.coupon && order.coupon._id) {
+      if (order.coupon?._id) {
         await this.couponModel.findByIdAndUpdate(
           order.coupon._id,
           { $push: { usedBy: order.userId } },

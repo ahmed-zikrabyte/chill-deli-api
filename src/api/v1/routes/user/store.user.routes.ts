@@ -10,4 +10,6 @@ userStoreRouter.get("/", userStoreController.getAll);
 // Get store by ID
 userStoreRouter.get("/id/:id", userStoreController.getById);
 
+userStoreRouter.get("/nearby", userStoreController.getAllSortedByDistance);
+
 export default userStoreRouter;

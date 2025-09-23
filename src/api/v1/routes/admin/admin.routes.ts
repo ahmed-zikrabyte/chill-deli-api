@@ -4,6 +4,7 @@ import adminAuthRouter from "./auth.admin.routes";
 import bannerAdminRoutes from "./banner.admin.routes";
 import boxRouter from "./box.admin.routes";
 import couponRouter from "./coupon.admin.routes";
+import eventRouter from "./event.admin.routes";
 import orderAdminRouter from "./order.admin.routes";
 import productRouter from "./product.admin.routes";
 import reelRouter from "./reel.admin.routes";
@@ -27,5 +28,6 @@ adminRoutes.use("/boxes", boxRouter);
 adminRoutes.use("/banners", bannerAdminRoutes);
 adminRoutes.use("/reviews", reviewAdminRoutes);
 adminRoutes.use("/orders", orderAdminRouter);
+adminRoutes.use("/events", eventRouter);
 
 export default adminRoutes;

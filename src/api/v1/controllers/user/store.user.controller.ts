@@ -33,4 +33,24 @@ export default class UserStoreController {
       statusCode: response.status,
     });
   });
+
+  getAllSortedByDistance = catchAsync(async (req: Request, res: Response) => {
+    const { lat, long, page = 1, limit = 10, search } = req.query;
+
+    if (!lat || !long) throw new Error("Latitude and longitude are required");
+
+    const response = await this.storeService.getAllSortedByDistance(
+      Number(lat),
+      Number(long),
+      Number(page),
+      Number(limit)
+    );
+
+    return ApiResponse.success({
+      res,
+      message: response.message,
+      data: response.data,
+      statusCode: response.status,
+    });
+  });
 }
