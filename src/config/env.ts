@@ -55,7 +55,6 @@ export const ENV = {
     companyName: process.env.COMPANY_NAME || "Chill Deli",
     userUrl: process.env.UI_URL || "http://localhost:3000",
     adminUrl: process.env.ADMIN_URL || "http://localhost:3001",
-    vendorUrl: process.env.VENDOR_URK || "http://localhost:3002",
     apiUrl: process.env.API_URL || `http://localhost:${process.env.PORT}`,
   },
   db: {

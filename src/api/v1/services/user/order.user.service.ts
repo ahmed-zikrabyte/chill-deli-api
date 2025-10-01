@@ -11,8 +11,8 @@ import { type Items, OrderModel } from "../../../../models/order.model";
 import { ProductModel } from "../../../../models/product.model";
 import { UserModel } from "../../../../models/user.model";
 import type { ServiceResponse } from "../../../../typings";
-import { generateInvoiceHTML } from "../../../../utils/generate-invoice-html";
 import { generateOrderId } from "../../../../utils/generateOrderId";
+import generateInvoiceMailTemplate from "../../../../utils/mail-templates/invoice-mail-template";
 import { createOrder } from "../../../../utils/razorpay";
 
 export class OrderUserService {
@@ -588,8 +588,26 @@ export class OrderUserService {
     }
 
     try {
-      // Generate HTML for invoice
-      const invoiceHTML = generateInvoiceHTML(order);
+      // Generate HTML for invoice using email template
+      const invoiceData = {
+        orderId: order.orderId,
+        createdAt: order.createdAt.toISOString(),
+        items: order.items,
+        address: order.address,
+        paymentMethod: order.paymentMethod,
+        subtotal: order.items.reduce(
+          (sum: number, item: any) => sum + item.price,
+          0
+        ),
+        discount: order.coupon?.discountAmount || 0,
+        discountedAmount: order.totalAmount.amount,
+        cgst: order.totalAmount.cgst,
+        sgst: order.totalAmount.sgst,
+        igst: order.totalAmount.igst,
+        finalTotal: order.totalAmount.totalAmount,
+        coupon: order.coupon,
+      };
+      const invoiceHTML = generateInvoiceMailTemplate(invoiceData);
 
       // Launch browser and generate PDF
       const browser = await chromium.launch({

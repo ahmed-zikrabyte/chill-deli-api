@@ -14,4 +14,18 @@ userAuthRouter.post(
   authController.verifyRegistrationOtp
 );
 
+// Forgot password
+userAuthRouter.post(
+  "/forgot-password/send-otp",
+  authController.sendForgotPasswordOtp
+);
+userAuthRouter.post(
+  "/forgot-password/verify-otp",
+  authController.verifyForgotPasswordOtp
+);
+userAuthRouter.post(
+  "/forgot-password/reset-password",
+  authController.resetPassword
+);
+
 export default userAuthRouter;
