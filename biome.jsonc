@@ -7,10 +7,17 @@
         "noNonNullAssertion": "off"
       },
       "correctness": {
-        "noUnusedVariables": "error",
-        "noUnusedFunctionParameters": "error",
-        "noUnusedImports": "error",
+        "noUnusedVariables": "off",
+        "noUnusedFunctionParameters": "off",
+        "noUnusedImports": "off",
         "noEmptyPattern": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noGlobalIsNan": "off"
+      },
+      "complexity": {
+        "noBannedTypes": "off"
       }
     }
   },

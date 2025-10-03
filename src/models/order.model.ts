@@ -1,0 +1,217 @@
+import mongoose, { type Types } from "mongoose";
+import { type Address, addressSchema } from "./address.model";
+import { boxSchema } from "./box.model";
+import { PRODUCT_DB_REF } from "./product.model";
+import { USER_DB_REF } from "./user.model";
+
+export interface Items {
+  productId: Types.ObjectId;
+  name: string;
+  variant: {
+    _id: Types.ObjectId;
+    price: number;
+    weight: number;
+  };
+  slug: string;
+  images: {
+    url: string;
+    filename: string;
+    contentType: string;
+  }[];
+  quantity: number;
+  price: number;
+}
+
+export interface IPaymentHistory {
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
+  paymentStatus: "pending" | "success" | "failed" | "refunded";
+  comment?: string;
+  paymentDate: Date;
+}
+
+export interface ITotalAmount {
+  amount: number;
+  gstTax: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  totalAmount: number;
+}
+
+export interface ICouponInOrder {
+  _id: Types.ObjectId;
+  code: string;
+  discountType: "percentage" | "flat";
+  discountValue: number;
+  discountAmount: number;
+  minPurchaseAmount: number;
+}
+
+export interface Orders {
+  orderId: string;
+  userId: mongoose.Schema.Types.ObjectId;
+  items: Items[];
+  paymentStatus: "pending" | "completed" | "failed" | "refunded";
+  paymentMethod: "free" | "razorpay";
+  paymentHistory: IPaymentHistory[];
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
+  totalAmount: ITotalAmount;
+  status: "confirmed" | "cancelled" | "pending";
+  address: Address;
+  createdAt: Date;
+  updatedAt: Date;
+  coupon?: ICouponInOrder;
+  box?: any;
+  browniePointsUsed?: number;
+  brownieDiscount?: number;
+}
+
+const couponSchema = new mongoose.Schema({
+  _id: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+  },
+  code: {
+    type: String,
+    required: true,
+    uppercase: true,
+    trim: true,
+  },
+  discountType: {
+    type: String,
+    enum: ["percentage", "flat"],
+    required: true,
+    default: "percentage",
+  },
+  discountValue: {
+    type: Number,
+    required: true,
+    min: 1,
+  },
+  discountAmount: {
+    type: Number,
+    required: true,
+    min: 0,
+  },
+  minPurchaseAmount: {
+    type: Number,
+    default: 0,
+  },
+});
+
+// Order schema
+const orderSchema = new mongoose.Schema<Orders>(
+  {
+    orderId: { type: String, required: true },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: USER_DB_REF,
+      required: true,
+    },
+    items: [
+      {
+        productId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: PRODUCT_DB_REF,
+          required: true,
+        },
+        name: { type: String, required: true },
+        variant: {
+          _id: { type: mongoose.Schema.Types.ObjectId, required: true },
+          price: { type: Number, required: true },
+          weight: { type: Number, required: true },
+        },
+        slug: { type: String, required: true },
+        images: [{ url: String, filename: String, contentType: String }],
+        quantity: { type: Number, required: true },
+        price: { type: Number, required: true },
+      },
+    ],
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "completed", "failed", "refunded"],
+      default: "pending",
+    },
+    paymentMethod: {
+      type: String,
+      enum: ["free", "razorpay"],
+      required: true,
+    },
+    razorpayOrderId: {
+      type: String,
+    },
+    razorpayPaymentId: {
+      type: String,
+    },
+    razorpaySignature: {
+      type: String,
+    },
+    totalAmount: {
+      amount: {
+        type: Number,
+        required: true,
+        min: 0,
+      },
+      gstTax: {
+        type: Number,
+        required: true,
+        min: 0,
+      },
+      cgst: {
+        type: Number,
+        required: true,
+        min: 0,
+      },
+      sgst: {
+        type: Number,
+        required: true,
+        min: 0,
+      },
+      igst: {
+        type: Number,
+        required: true,
+        min: 0,
+      },
+      totalAmount: {
+        type: Number,
+        required: true,
+        min: 0,
+      },
+    },
+    paymentHistory: [
+      {
+        razorpayOrderId: String,
+        razorpayPaymentId: String,
+        razorpaySignature: String,
+        paymentStatus: {
+          type: String,
+          enum: ["pending", "completed", "failed", "refunded"],
+          required: true,
+        },
+        comment: String,
+        paymentDate: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+    status: {
+      type: String,
+      enum: ["confirmed", "cancelled", "pending"],
+      default: "pending",
+    },
+    coupon: { type: couponSchema, required: false },
+    address: { type: addressSchema, required: true },
+    box: { type: boxSchema },
+    browniePointsUsed: { type: Number, default: 0 },
+    brownieDiscount: { type: Number, default: 0 },
+  },
+  { timestamps: true }
+);
+
+export const ORDER_DB_REF = "orders";
+export const OrderModel = mongoose.model<Orders>(ORDER_DB_REF, orderSchema);
