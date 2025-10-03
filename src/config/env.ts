@@ -52,13 +52,13 @@ export const ENV = {
     port: process.env.PORT || "8000",
     apiPrefix: process.env.API_PREFIX || "/api",
     apiVersion: process.env.API_VERSION || "v1",
-    companyName: process.env.COMPANY_NAME || "Social Notch",
+    companyName: process.env.COMPANY_NAME || "Chill Deli",
     userUrl: process.env.UI_URL || "http://localhost:3000",
     adminUrl: process.env.ADMIN_URL || "http://localhost:3001",
-    vendorUrl: process.env.VENDOR_URK || "http://localhost:3002",
+    apiUrl: process.env.API_URL || `http://localhost:${process.env.PORT}`,
   },
   db: {
-    mongoUri: process.env.MONGO_URI || "mongodb://localhost:27017/socialnotch",
+    mongoUri: process.env.MONGO_URI || "mongodb://localhost:27017/chilldeli",
   },
   aws: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -82,7 +82,7 @@ export const ENV = {
     port: process.env.EMAIL_PORT ? parseInt(process.env.EMAIL_PORT, 10) : 587,
     user: process.env.EMAIL_USER,
     password: process.env.EMAIL_PASSWORD,
-    from: process.env.EMAIL_FROM || "Social Notch",
+    from: process.env.EMAIL_FROM || "Chill Deli",
   },
   logging: {
     level: process.env.LOG_LEVEL || "info",

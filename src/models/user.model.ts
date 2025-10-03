@@ -1,21 +1,19 @@
 import bcryptjs from "bcryptjs";
 import mongoose from "mongoose";
 
-export type TUserRole = "user" | "vendor" | "admin" | "city_admin" | "support";
+export type TUserRole = "user";
 
 export interface IUser {
-  name?: string;
+  name: string;
   email: string;
-  phone?: string;
+  phone: string;
   password: string;
   role: TUserRole;
-  city?: string;
-  isVerified?: boolean;
-  permissions?: string[];
   profileImage?: string;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
   isActive?: boolean;
+  browniePoints: number;
   comparePassword: (password: string) => Promise<boolean>;
 }
 
@@ -32,6 +30,7 @@ const userSchema = new mongoose.Schema<IUser>(
     phone: {
       type: String,
       required: false,
+      unique: true,
       trim: true,
     },
     password: {
@@ -41,20 +40,14 @@ const userSchema = new mongoose.Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ["user", "vendor", "admin", "city_admin", "support"],
+      enum: ["user"],
       default: "user",
     },
-    city: {
-      type: String,
-      required: false,
-      trim: true,
-    },
-    isVerified: { type: Boolean, default: false },
-    permissions: { type: [String], default: [] },
+    browniePoints: { type: Number, default: 0 },
     profileImage: { type: String, required: false },
     resetPasswordToken: { type: String, required: false },
     resetPasswordExpires: { type: Date, required: false },
-    isActive: { type: Boolean, default: false },
+    isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
@@ -65,5 +58,5 @@ userSchema.methods.comparePassword = async function (
   return await bcryptjs.compare(password, this.password);
 };
 
-export const USER_DB_REF = "users";
+export const USER_DB_REF = "user";
 export const UserModel = mongoose.model(USER_DB_REF, userSchema);
