@@ -207,17 +207,19 @@ export default class UserReelService {
         throw new AppError("Reel not found", HTTP.NOT_FOUND);
       }
 
-      // Check if user liked this reel
+      // Check if user liked and viewed this reel
       const userObjectId = userId ? new mongoose.Types.ObjectId(userId) : null;
       const isLiked = userObjectId ? reel.likes.includes(userObjectId) : false;
+      const isViewed = userObjectId ? reel.views.includes(userObjectId) : false;
 
-      // Add counts and like status
+      // Add counts and status
       const reelWithCounts = {
         ...reel.toObject(),
         likesCount: reel.likes?.length || 0,
         viewsCount: reel.views?.length || 0,
         fullyWatchedCount: reel.fullyWatched?.length || 0,
         isLiked,
+        isViewed,
       };
 
       return {
@@ -270,6 +272,7 @@ export default class UserReelService {
         viewsCount: r.views?.length || 0,
         fullyWatchedCount: r.fullyWatched?.length || 0,
         isLiked: userObjectId ? r.likes.includes(userObjectId) : false,
+        isViewed: userObjectId ? r.views.includes(userObjectId) : false,
       }));
 
       const totalPages = Math.ceil(total / limit);

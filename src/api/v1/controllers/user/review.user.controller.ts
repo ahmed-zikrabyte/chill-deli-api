@@ -10,7 +10,7 @@ export class ReviewUserController {
   createReview = catchAsync(async (req: Request, res: Response) => {
     console.log(req.body);
     const { productId, review, rating } = req.body;
-    const userId = req.user._id;
+    const userId = req.user.id;
 
     const response = await reviewUserService.createReview(
       userId,
@@ -28,7 +28,11 @@ export class ReviewUserController {
 
   getReviewsByProductId = catchAsync(async (req: Request, res: Response) => {
     const { productId } = req.params;
-    const response = await reviewUserService.getReviewsByProductId(productId);
+    const userId = req.user?._id; // Optional user context
+    const response = await reviewUserService.getReviewsByProductId(
+      productId,
+      userId
+    );
     return ApiResponse.success({
       res,
       message: "Reviews fetched successfully",
@@ -37,32 +41,34 @@ export class ReviewUserController {
     });
   });
 
-  isReviewAddedByUser = catchAsync(async (req: Request, res: Response) => {
-    const { productId } = req.params;
-    const userId = req.user._id;
-    const response = await reviewUserService.isReviewAddedByUser(
+  createStoreReview = catchAsync(async (req: Request, res: Response) => {
+    const { storeId, review, rating } = req.body;
+    const userId = req.user.id;
+
+    const response = await reviewUserService.createStoreReview(
       userId,
-      productId
+      storeId,
+      review,
+      rating
     );
     return ApiResponse.success({
       res,
-      message: "Review fetched successfully",
+      message: "Store review created successfully",
       data: response,
       statusCode: HTTP.OK,
     });
   });
 
-  isProductPurchasedByUser = catchAsync(async (req: Request, res: Response) => {
-    const { productId } = req.params;
-    const userId = req.user._id;
-    const response = await reviewUserService.isProductPurchasedByUser(
-      userId,
-      productId
+  getReviewsByStoreId = catchAsync(async (req: Request, res: Response) => {
+    const { storeId } = req.params;
+    const userId = req.user?._id; // Optional user context
+    const response = await reviewUserService.getReviewsByStoreId(
+      storeId,
+      userId
     );
-
     return ApiResponse.success({
       res,
-      message: "Review added",
+      message: "Store reviews fetched successfully",
       data: response,
       statusCode: HTTP.OK,
     });
