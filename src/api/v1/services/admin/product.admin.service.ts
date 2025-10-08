@@ -40,13 +40,17 @@ export default class ProductService {
         );
       }
 
-      const slug = slugify(name, { lower: true });
+      const baseSlug = slugify(name, { lower: true });
+      const slug = `${baseSlug}-${deliveryStatus === "available-for-delivery" ? "delivery" : "pickup"}`;
       const existingProduct = await this.productModel.findOne({
         slug,
         isDeleted: false,
       });
       if (existingProduct)
-        throw new AppError("Product already exists", HTTP.CONFLICT);
+        throw new AppError(
+          "Product with this name and delivery status already exists",
+          HTTP.CONFLICT
+        );
 
       // Upload images
       const uploadedImages = await Promise.all(
@@ -150,24 +154,28 @@ export default class ProductService {
         isActive,
       } = updateData;
 
-      if (name) {
-        const slugified = slugify(name, { lower: true });
-        if (slugified !== product.slug) {
+      if (name || deliveryStatus) {
+        const baseSlug = slugify(name || product.name, { lower: true });
+        const newDeliveryStatus = deliveryStatus || product.deliveryStatus;
+        const newSlug = `${baseSlug}-${newDeliveryStatus === "available-for-delivery" ? "delivery" : "pickup"}`;
+
+        if (newSlug !== product.slug) {
           const existingProduct = await this.productModel.findOne({
-            slug: slugified,
+            slug: newSlug,
             _id: { $ne: product._id },
             isDeleted: false,
           });
           if (existingProduct) {
             throw new AppError(
-              "Product with this name already exists",
+              "Product with this name and delivery status already exists",
               HTTP.CONFLICT
             );
           }
-          product.slug = slugified;
+          product.slug = newSlug;
         }
-        product.name = name;
       }
+
+      if (name) product.name = name;
 
       if (description) product.description = description;
 
