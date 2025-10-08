@@ -92,16 +92,9 @@ export class ReviewUserService {
       { rating: 1, _id: 0 }
     );
 
-    const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-
-    ratings.forEach(({ rating }) => {
-      counts[rating as keyof typeof counts] =
-        (counts[rating as keyof typeof counts] || 0) + 1;
-    });
-
     const total = ratings.reduce((sum, { rating }) => sum + rating, 0);
     const average =
-      ratings.length > 0 ? (total / ratings.length).toFixed(1) : 0;
+      ratings.length > 0 ? +(total / ratings.length).toFixed(1) : 0;
 
     let userMetadata: IUserReviewMetadata | undefined;
     if (userId) {
@@ -123,7 +116,7 @@ export class ReviewUserService {
       };
     }
 
-    return { reviews, ratings, counts, average, userMetadata };
+    return { reviews, average, userMetadata };
   };
 
   private isProductPurchasedByUser = async (
@@ -208,16 +201,9 @@ export class ReviewUserService {
       { rating: 1, _id: 0 }
     );
 
-    const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-
-    ratings.forEach(({ rating }) => {
-      counts[rating as keyof typeof counts] =
-        (counts[rating as keyof typeof counts] || 0) + 1;
-    });
-
     const total = ratings.reduce((sum, { rating }) => sum + rating, 0);
     const average =
-      ratings.length > 0 ? (total / ratings.length).toFixed(1) : 0;
+      ratings.length > 0 ? +(total / ratings.length).toFixed(1) : 0;
 
     let userMetadata: IUserReviewMetadata | undefined;
     if (userId) {
@@ -234,6 +220,6 @@ export class ReviewUserService {
       };
     }
 
-    return { reviews, ratings, counts, average, userMetadata };
+    return { reviews, average, userMetadata };
   };
 }

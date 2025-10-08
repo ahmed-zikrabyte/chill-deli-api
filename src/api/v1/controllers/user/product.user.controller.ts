@@ -58,4 +58,22 @@ export default class UserProductController {
       statusCode: response.status,
     });
   });
+
+  // GET /products/available-for-delivery
+  getAvailableForDelivery = catchAsync(async (req: Request, res: Response) => {
+    const { page = 1, limit = 10, search } = req.query;
+
+    const response = await this.productService.getAvailableForDelivery(
+      Number(page),
+      Number(limit),
+      search as string
+    );
+
+    return ApiResponse.success({
+      res,
+      message: response.message,
+      data: response.data,
+      statusCode: response.status,
+    });
+  });
 }

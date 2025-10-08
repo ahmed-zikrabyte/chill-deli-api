@@ -1,5 +1,4 @@
 import express from "express";
-import { protectUser } from "../../../../middleware/userAuth.middleware";
 import { ReviewUserController } from "../../controllers/user/review.user.controller";
 
 const reviewUserRoutes: express.Router = express.Router();
