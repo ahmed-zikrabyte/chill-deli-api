@@ -5,18 +5,23 @@ import { ReviewModel } from "../../../../models/reviews.model";
 class ReviewAdminService {
   private readonly reviewModel = ReviewModel;
 
-  getAllReviews = async (page = 1, limit = 10) => {
+  getAllReviews = async (
+    page = 1,
+    limit = 10,
+    reviewType?: "product" | "store"
+  ) => {
     try {
       const skip = (page - 1) * limit;
+      const filter = reviewType ? { reviewType } : {};
 
       const [reviews, totalReviews] = await Promise.all([
         this.reviewModel
-          .find()
+          .find(filter)
           .sort({ createdAt: -1 })
           .skip(skip)
           .limit(limit)
           .populate("userId"),
-        this.reviewModel.countDocuments(),
+        this.reviewModel.countDocuments(filter),
       ]);
 
       const totalPages = limit > 0 ? Math.ceil(totalReviews / limit) : 0;
@@ -28,6 +33,7 @@ class ReviewAdminService {
         totalReviews,
         hasNextPage: page < totalPages,
         hasPrevPage: page > 1,
+        reviewType: reviewType || "all",
       };
     } catch (error) {
       if (error instanceof AppError) throw error;

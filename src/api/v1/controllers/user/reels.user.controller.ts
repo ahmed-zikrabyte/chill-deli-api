@@ -56,7 +56,8 @@ export default class UserReelController {
 
   // GET REEL BY ID
   getById = catchAsync(async (req: Request, res: Response) => {
-    const response = await this.reelService.getById(req.params.id);
+    const userId = req.user?.id;
+    const response = await this.reelService.getById(req.params.id, userId);
     return ApiResponse.success({
       res,
       message: response.message,
@@ -68,12 +69,14 @@ export default class UserReelController {
   // GET ALL REELS with pagination and filter
   getAll = catchAsync(async (req: Request, res: Response) => {
     const { page = 1, limit = 10, isActive, search } = req.query;
+    const userId = req.user?.id;
 
     const response = await this.reelService.getAll(
       Number(page),
       Number(limit),
       isActive === "true" ? true : isActive === "false" ? false : undefined,
-      (search as string) || undefined
+      (search as string) || undefined,
+      userId
     );
 
     return ApiResponse.success({

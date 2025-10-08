@@ -193,7 +193,7 @@ export default class UserReelService {
   };
 
   // === GET BY ID ===
-  getById = async (id: string): Promise<ServiceResponse> => {
+  getById = async (id: string, userId?: string): Promise<ServiceResponse> => {
     try {
       if (!mongoose.Types.ObjectId.isValid(id)) {
         throw new AppError("Invalid reel ID", HTTP.BAD_REQUEST);
@@ -207,12 +207,19 @@ export default class UserReelService {
         throw new AppError("Reel not found", HTTP.NOT_FOUND);
       }
 
-      // Add counts
+      // Check if user liked and viewed this reel
+      const userObjectId = userId ? new mongoose.Types.ObjectId(userId) : null;
+      const isLiked = userObjectId ? reel.likes.includes(userObjectId) : false;
+      const isViewed = userObjectId ? reel.views.includes(userObjectId) : false;
+
+      // Add counts and status
       const reelWithCounts = {
         ...reel.toObject(),
         likesCount: reel.likes?.length || 0,
         viewsCount: reel.views?.length || 0,
         fullyWatchedCount: reel.fullyWatched?.length || 0,
+        isLiked,
+        isViewed,
       };
 
       return {
@@ -233,7 +240,8 @@ export default class UserReelService {
     page: number = 1,
     limit: number = 10,
     isActive?: boolean,
-    search?: string
+    search?: string,
+    userId?: string
   ): Promise<ServiceResponse> => {
     try {
       const query: Record<string, any> = { isDeleted: false };
@@ -247,6 +255,7 @@ export default class UserReelService {
       }
 
       const skip = (page - 1) * limit;
+      const userObjectId = userId ? new mongoose.Types.ObjectId(userId) : null;
 
       const [reels, total] = await Promise.all([
         this.reelModel
@@ -262,6 +271,8 @@ export default class UserReelService {
         likesCount: r.likes?.length || 0,
         viewsCount: r.views?.length || 0,
         fullyWatchedCount: r.fullyWatched?.length || 0,
+        isLiked: userObjectId ? r.likes.includes(userObjectId) : false,
+        isViewed: userObjectId ? r.views.includes(userObjectId) : false,
       }));
 
       const totalPages = Math.ceil(total / limit);
