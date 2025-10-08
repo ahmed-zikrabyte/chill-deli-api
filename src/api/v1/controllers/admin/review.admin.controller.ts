@@ -8,14 +8,15 @@ const reviewAdminService = new ReviewAdminService();
 
 class ReviewAdminController {
   getReviews = catchAsync(async (req: Request, res: Response) => {
-    const { page, limit } = req.query;
+    const { page, limit, reviewType } = req.query;
     const response = await reviewAdminService.getAllReviews(
       Number(page || 1),
-      Number(limit || 10)
+      Number(limit || 10),
+      reviewType as "product" | "store" | undefined
     );
     return ApiResponse.success({
       res,
-      message: "Reviews fetched successfully",
+      message: `${reviewType ? `${reviewType} r` : "R"}eviews fetched successfully`,
       data: response,
       statusCode: HTTP.OK,
     });

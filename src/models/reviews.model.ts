@@ -1,9 +1,39 @@
 import mongoose, { type Document, Schema } from "mongoose";
 
-interface IReview extends Document {
+export interface IUserReviewMetadata {
+  hasUserReviewed: boolean;
+  userReviewId?: string;
+  hasPurchased: boolean;
+}
+
+export interface IReviewResponse {
+  reviews: IReview[];
+  ratings: { rating: number }[];
+  counts: { 1: number; 2: number; 3: number; 4: number; 5: number };
+  average: string | number;
+  userMetadata?: IUserReviewMetadata;
+}
+
+export interface IReview extends Document {
   userId: mongoose.Types.ObjectId;
-  product: {
+  reviewType: "product" | "store";
+  product?: {
     productId: mongoose.Types.ObjectId;
+    name: string;
+    images: {
+      url: string;
+      contentType: string;
+      filename: string;
+    }[];
+  };
+  store?: {
+    storeId: mongoose.Types.ObjectId;
+    name: string;
+    images: {
+      url: string;
+      contentType: string;
+      filename: string;
+    }[];
   };
   review: string;
   rating: number;
@@ -18,21 +48,36 @@ const reviewSchema = new Schema<IReview>(
       ref: "user",
       required: true,
     },
+    reviewType: {
+      type: String,
+      enum: ["product", "store"],
+      required: true,
+    },
     product: {
       productId: {
         type: Schema.Types.ObjectId,
         ref: "product",
-        required: true,
       },
-      name: {
-        type: String,
-        required: true,
-      },
+      name: String,
       images: [
         {
-          url: { type: String, required: true },
-          contentType: { type: String, required: true },
-          filename: { type: String, required: true },
+          url: String,
+          contentType: String,
+          filename: String,
+        },
+      ],
+    },
+    store: {
+      storeId: {
+        type: Schema.Types.ObjectId,
+        ref: "store",
+      },
+      name: String,
+      images: [
+        {
+          url: String,
+          contentType: String,
+          filename: String,
         },
       ],
     },
