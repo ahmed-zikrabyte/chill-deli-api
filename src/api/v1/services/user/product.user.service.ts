@@ -134,4 +134,56 @@ export default class UserProductService {
       throw new AppError((error as Error).message, HTTP.INTERNAL_SERVER_ERROR);
     }
   }
+
+  // Get All Products Available for Delivery
+  async getAvailableForDelivery(
+    page: number = 1,
+    limit: number = 10,
+    search?: string
+  ): Promise<ServiceResponse> {
+    try {
+      const query: Record<string, any> = {
+        isDeleted: false,
+        deliveryStatus: "available-for-delivery",
+      };
+
+      if (search && search.trim() !== "") {
+        query.name = { $regex: search.trim(), $options: "i" };
+      }
+
+      const skip = (page - 1) * limit;
+
+      const [products, total] = await Promise.all([
+        this.productModel
+          .find(query)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit),
+        this.productModel.countDocuments(query),
+      ]);
+
+      const totalPages = Math.ceil(total / limit);
+
+      return {
+        data: {
+          products,
+          pagination: {
+            currentPage: page,
+            totalPages,
+            totalItems: total,
+            itemsPerPage: limit,
+            hasNext: page < totalPages,
+            hasPrev: page > 1,
+          },
+        },
+        message: "Products available for delivery fetched successfully",
+        status: HTTP.OK,
+        success: true,
+      };
+    } catch (error) {
+      console.error(error);
+      if (error instanceof AppError) throw error;
+      throw new AppError((error as Error).message, HTTP.INTERNAL_SERVER_ERROR);
+    }
+  }
 }
