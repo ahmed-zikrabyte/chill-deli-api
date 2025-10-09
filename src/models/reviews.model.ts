@@ -8,8 +8,6 @@ export interface IUserReviewMetadata {
 
 export interface IReviewResponse {
   reviews: IReview[];
-  ratings: { rating: number }[];
-  counts: { 1: number; 2: number; 3: number; 4: number; 5: number };
   average: string | number;
   userMetadata?: IUserReviewMetadata;
 }
