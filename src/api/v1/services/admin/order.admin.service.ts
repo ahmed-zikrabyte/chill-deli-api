@@ -3,6 +3,8 @@ import xlsx from "xlsx";
 import { HTTP } from "../../../../config/http-status.config";
 import { AppError } from "../../../../middleware/error.middleware";
 import { OrderModel } from "../../../../models/order.model";
+import type { ServiceResponse } from "../../../../typings";
+import assignAWB from "../../../../utils/shiprocket/assignAwb";
 
 class OrderAdminService {
   private readonly orderModel = OrderModel;
@@ -296,6 +298,85 @@ class OrderAdminService {
       xlsx.utils.book_append_sheet(workbook, worksheet, "Orders");
 
       return xlsx.write(workbook, { bookType: "xlsx", type: "buffer" });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError((error as Error).message, HTTP.INTERNAL_SERVER_ERROR);
+    }
+  };
+
+  assignAwbManually = async (shipmentId: number): Promise<ServiceResponse> => {
+    try {
+      const order = await this.orderModel.findOne({
+        "delivery.shipmentId": shipmentId.toString(),
+      });
+
+      if (!order) {
+        throw new AppError(
+          "Order not found for this shipment ID",
+          HTTP.NOT_FOUND
+        );
+      }
+
+      if (order.delivery?.awbStatus === "assigned") {
+        throw new AppError(
+          "AWB already assigned for this order",
+          HTTP.BAD_REQUEST
+        );
+      }
+
+      try {
+        const awbResponse = await assignAWB(shipmentId);
+
+        if (awbResponse?.awb_code && order.delivery) {
+          order.delivery.awbCode = awbResponse.awb_code;
+          order.delivery.courierCompanyId = awbResponse.courier_company_id;
+          order.delivery.assignedDateTime = awbResponse.assigned_date_time;
+          order.delivery.awbStatus = "assigned";
+
+          await order.save();
+
+          return {
+            data: {
+              orderId: order.orderId,
+              shipmentId: shipmentId,
+              awbCode: awbResponse.awb_code,
+              courierCompanyId: awbResponse.courier_company_id,
+              assignedDateTime: awbResponse.assigned_date_time,
+            },
+            message: "AWB assigned successfully",
+            status: HTTP.OK,
+            success: true,
+          };
+        } else {
+          throw new AppError(
+            "Failed to get AWB from Shiprocket",
+            HTTP.INTERNAL_SERVER_ERROR
+          );
+        }
+      } catch (awbError: any) {
+        // Check if it's a wallet/balance issue
+        const errorMessage =
+          awbError.response?.data?.message ||
+          awbError.message ||
+          "Unknown error";
+        const isWalletIssue =
+          errorMessage.toLowerCase().includes("wallet") ||
+          errorMessage.toLowerCase().includes("insufficient") ||
+          errorMessage.toLowerCase().includes("balance") ||
+          errorMessage.toLowerCase().includes("recharge");
+
+        if (isWalletIssue) {
+          throw new AppError(
+            "Shiprocket wallet has insufficient balance. Please recharge your Shiprocket wallet and try again.",
+            HTTP.BAD_REQUEST
+          );
+        } else {
+          throw new AppError(
+            `AWB assignment failed: ${errorMessage}`,
+            HTTP.INTERNAL_SERVER_ERROR
+          );
+        }
+      }
     } catch (error) {
       if (error instanceof AppError) throw error;
       throw new AppError((error as Error).message, HTTP.INTERNAL_SERVER_ERROR);
