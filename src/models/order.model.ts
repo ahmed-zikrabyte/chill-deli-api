@@ -44,6 +44,10 @@ export interface ITotalAmount {
 export interface IDelivery {
   shiprocketOrderId?: string;
   shipmentId?: string;
+  awbCode?: string;
+  courierCompanyId?: string;
+  assignedDateTime?: string;
+  awbStatus?: "pending" | "assigned" | "failed";
   courierName: string;
   deliveryCharge: number;
   etd: string;
@@ -236,6 +240,14 @@ const orderSchema = new mongoose.Schema<Orders>(
     delivery: {
       shiprocketOrderId: { type: String },
       shipmentId: { type: String },
+      awbCode: { type: String },
+      courierCompanyId: { type: String },
+      assignedDateTime: { type: String },
+      awbStatus: {
+        type: String,
+        enum: ["pending", "assigned", "failed"],
+        default: "pending",
+      },
       courierName: { type: String },
       deliveryCharge: { type: Number, min: 0 },
       etd: { type: String },

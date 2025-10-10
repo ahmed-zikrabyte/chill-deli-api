@@ -15,6 +15,7 @@ import type { ServiceResponse } from "../../../../typings";
 import { generateOrderId } from "../../../../utils/generateOrderId";
 import generateInvoiceMailTemplate from "../../../../utils/mail-templates/invoice-mail-template";
 import { createOrder } from "../../../../utils/razorpay";
+import assignAWB from "../../../../utils/shiprocket/assignAwb";
 import { checkHyperlocalCourierAvailability } from "../../../../utils/shiprocket/courierAvailabilty";
 import { createShiprocketOrder } from "../../../../utils/shiprocket/createOrder";
 
@@ -541,8 +542,12 @@ export class OrderUserService {
 
       await newOrder.save({ session });
 
-      // Clear cart after successful order creation
-      await this.cartModel.findByIdAndDelete(orderData.cartId).session(session);
+      // For free orders, clear cart immediately since no payment verification needed
+      if (orderData.paymentMethod === "free") {
+        await this.cartModel
+          .findByIdAndDelete(orderData.cartId)
+          .session(session);
+      }
 
       if (coupon) {
         coupon.usedBy.push(new mongoose.Types.ObjectId(userId));
@@ -708,6 +713,30 @@ export class OrderUserService {
           console.log(
             `✅ Shiprocket order created - OrderID: ${shiprocketResponse.order_id}, ShipmentID: ${shiprocketResponse.shipment_id}`
           );
+
+          // Assign AWB after successful order creation
+          try {
+            const awbResponse = await assignAWB(shiprocketResponse.shipment_id);
+            if (awbResponse?.awb_code && order.delivery) {
+              order.delivery.awbCode = awbResponse.awb_code;
+              order.delivery.courierCompanyId = awbResponse.courier_company_id;
+              order.delivery.assignedDateTime = awbResponse.assigned_date_time;
+              order.delivery.awbStatus = "assigned";
+              console.log(`📋 AWB assigned: ${awbResponse.awb_code}`);
+            }
+          } catch (awbError: any) {
+            console.error("❌ AWB assignment failed:", {
+              orderId: order.orderId,
+              shipmentId: shiprocketResponse.shipment_id,
+              error: awbError.message,
+              response: awbError.response?.data,
+            });
+
+            // Keep AWB status as pending - admin will assign manually later
+            console.log(
+              "📋 AWB assignment pending - Admin intervention needed"
+            );
+          }
         }
       } catch (shiprocketError: any) {
         console.error("❌ Shiprocket order creation failed after payment:", {
@@ -719,16 +748,42 @@ export class OrderUserService {
           stack: shiprocketError.stack,
         });
 
-        // Add note to payment history about Shiprocket failure
+        // Check if it's a wallet/payment issue
+        const isWalletIssue =
+          shiprocketError.response?.data?.message
+            ?.toLowerCase()
+            .includes("wallet") ||
+          shiprocketError.response?.data?.message
+            ?.toLowerCase()
+            .includes("insufficient") ||
+          shiprocketError.response?.data?.message
+            ?.toLowerCase()
+            .includes("balance");
+
+        const errorComment = isWalletIssue
+          ? `Shiprocket wallet insufficient - Manual order creation required: ${shiprocketError.message}`
+          : `Shiprocket order creation failed: ${shiprocketError.message}`;
+
         order.paymentHistory.push({
           paymentStatus: "completed",
           paymentDate: new Date(),
-          comment: `Shiprocket order creation failed: ${shiprocketError.message}`,
+          comment: errorComment,
         });
+
+        console.log(
+          isWalletIssue
+            ? "💰 Wallet issue detected - Admin intervention needed"
+            : "⚠️ General Shiprocket error"
+        );
 
         // Don't throw - payment was successful, Shiprocket is secondary
         // You can create a manual process to retry failed Shiprocket orders
       }
+
+      // Clear cart after successful payment verification
+      await this.cartModel
+        .findOneAndDelete({ userId: order.userId })
+        .session(session);
 
       // Deduct brownie points
       if (order.browniePointsUsed && order.browniePointsUsed > 0) {
