@@ -95,6 +95,29 @@ class OrderAdminController {
     res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
     res.send(buffer);
   });
+
+  assignAwbManually = catchAsync(async (req: Request, res: Response) => {
+    const { shipmentId } = req.params;
+
+    if (!shipmentId) {
+      return ApiResponse.error({
+        res,
+        message: "Shipment ID is required",
+        statusCode: HTTP.BAD_REQUEST,
+      });
+    }
+
+    const result = await orderAdminService.assignAwbManually(
+      Number(shipmentId)
+    );
+
+    return ApiResponse.success({
+      res,
+      data: result.data,
+      message: result.message,
+      statusCode: result.status,
+    });
+  });
 }
 
 export default OrderAdminController;
