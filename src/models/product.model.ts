@@ -60,7 +60,6 @@ const productSchema = new Schema<IProduct>(
       enum: ["in-stock", "out-of-stock"],
       default: "in-stock",
     },
-
     isActive: { type: Boolean, default: true },
     isDeleted: { type: Boolean, default: false },
   },

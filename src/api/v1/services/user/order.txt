@@ -6,7 +6,6 @@ import { AppError } from "../../../../middleware/error.middleware";
 import { AddressModel } from "../../../../models/address.model";
 import { BoxModel } from "../../../../models/box.model";
 import { BrowniePointsModel } from "../../../../models/brownie-point.model";
-import { Cart } from "../../../../models/cart.model";
 import { CouponModel } from "../../../../models/coupon.model";
 import { type Items, OrderModel } from "../../../../models/order.model";
 import { ProductModel } from "../../../../models/product.model";
@@ -25,7 +24,6 @@ export class OrderUserService {
   private readonly productModel = ProductModel;
   private readonly couponModel = CouponModel;
   private readonly boxModel = BoxModel;
-  private readonly cartModel = Cart;
 
   private parseWeight(weight: string | number): number {
     if (typeof weight === "number") return weight;
@@ -40,218 +38,14 @@ export class OrderUserService {
     return num; // assume grams if no unit
   }
 
-  async calculateOrderSummary(
-    userId: string,
-    data: {
-      cartId: string;
-      addressId: string;
-      couponCode?: string;
-      browniePointsToUse?: number;
-    }
-  ): Promise<ServiceResponse> {
-    try {
-      const address = await this.addressModel.findOne({
-        _id: data.addressId,
-        userId,
-      });
-      if (!address) throw new AppError("Address not found", HTTP.NOT_FOUND);
-
-      const cart = await this.cartModel.findById(data.cartId);
-      if (!cart || cart.userId.toString() !== userId) {
-        throw new AppError("Cart not found", HTTP.NOT_FOUND);
-      }
-      if (!cart.items.length) {
-        throw new AppError("Cart is empty", HTTP.BAD_REQUEST);
-      }
-
-      // Calculate cart subtotal
-      let subtotal = 0;
-      const items = [];
-      for (const item of cart.items) {
-        const product = await this.productModel.findById(item.productId);
-        if (!product) continue;
-        const variant = product.variants.find(
-          (v) => v._id?.toString() === item.variant.toString()
-        );
-        if (!variant) continue;
-
-        const itemTotal = variant.price * item.quantity;
-        subtotal += itemTotal;
-        items.push({
-          name: product.name,
-          quantity: item.quantity,
-          price: variant.price,
-          total: itemTotal,
-          weight: this.parseWeight(variant.weight),
-        });
-      }
-
-      // Apply coupon discount
-      let couponDiscount = 0;
-      let couponDetails = null;
-      if (data.couponCode) {
-        const coupon = await this.couponModel.findOne({
-          code: { $regex: `^${data.couponCode}$`, $options: "i" },
-          isActive: true,
-          isDeleted: false,
-          startDate: { $lte: new Date() },
-          expiresAt: { $gt: new Date() },
-        });
-
-        if (
-          coupon &&
-          !coupon.usedBy.includes(new mongoose.Types.ObjectId(userId)) &&
-          subtotal >= coupon.minPurchaseAmount
-        ) {
-          couponDiscount =
-            coupon.discountType === "percentage"
-              ? (subtotal * coupon.discountValue) / 100
-              : coupon.discountValue;
-          couponDetails = {
-            code: coupon.code,
-            discountType: coupon.discountType,
-            discountValue: coupon.discountValue,
-            discountAmount: couponDiscount,
-          };
-        }
-      }
-
-      // Apply brownie points
-      const requestedPoints = data.browniePointsToUse
-        ? Number(data.browniePointsToUse)
-        : 0;
-      let brownieDiscount = 0;
-      if (requestedPoints > 0) {
-        const totalEarned = await BrowniePointsModel.aggregate([
-          {
-            $match: {
-              userId: new mongoose.Types.ObjectId(userId),
-              type: "earned",
-            },
-          },
-          { $group: { _id: null, total: { $sum: "$points" } } },
-        ]);
-        const totalSpent = await BrowniePointsModel.aggregate([
-          {
-            $match: {
-              userId: new mongoose.Types.ObjectId(userId),
-              type: "spent",
-            },
-          },
-          { $group: { _id: null, total: { $sum: "$points" } } },
-        ]);
-        const availablePoints =
-          (totalEarned[0]?.total || 0) - (totalSpent[0]?.total || 0);
-
-        if (requestedPoints <= availablePoints) {
-          brownieDiscount = Math.min(
-            requestedPoints,
-            subtotal - couponDiscount
-          );
-        }
-      }
-
-      const discountedAmount = subtotal - couponDiscount - brownieDiscount;
-
-      // Auto-select box based on total item count
-      const totalItemCount = items.reduce(
-        (sum, item) => sum + item.quantity,
-        0
-      );
-      const box = await this.boxModel.findOne({
-        "itemCountRange.min": { $lte: totalItemCount },
-        "itemCountRange.max": { $gte: totalItemCount },
-      });
-
-      if (!box) {
-        throw new AppError(
-          "No suitable box found for the given item count",
-          HTTP.BAD_REQUEST
-        );
-      }
-
-      // Calculate GST based on state
-      const gstRate = Number(process.env.COMPANY_GST || "18");
-      const gstTax = (discountedAmount * gstRate) / 100;
-      const businessState = process.env.COMPANY_STATE || "Karnataka";
-      const customerState = address.state;
-
-      let cgst = 0,
-        sgst = 0,
-        igst = 0;
-      if (businessState.toLowerCase() === customerState.toLowerCase()) {
-        // Intra-state: CGST + SGST
-        cgst = gstTax / 2;
-        sgst = gstTax / 2;
-      } else {
-        // Inter-state: IGST
-        igst = gstTax;
-      }
-
-      const amountAfterGst = discountedAmount + gstTax;
-
-      // Calculate delivery charge
-      const totalWeight =
-        items.reduce((sum, item) => sum + item.weight * item.quantity, 0) /
-        1000;
-      const deliveryRates = await checkHyperlocalCourierAvailability(
-        address.pincode,
-        address.latitude || 0,
-        address.longitude || 0,
-        totalWeight
-      );
-
-      if (!deliveryRates.status || !deliveryRates.data.length) {
-        throw new AppError(
-          "Delivery not available for this location",
-          HTTP.BAD_REQUEST
-        );
-      }
-
-      const deliveryCharge = deliveryRates.data[0].rates || 0;
-      const finalTotal = amountAfterGst + deliveryCharge;
-
-      return {
-        data: {
-          items,
-          subtotal,
-          couponDiscount,
-          couponDetails,
-          brownieDiscount,
-          discountedAmount,
-          box: {
-            _id: box._id,
-            label: box.label,
-            itemCountRange: box.itemCountRange,
-            totalItemCount,
-          },
-          gst: {
-            rate: gstRate,
-            cgst,
-            sgst,
-            igst,
-            total: gstTax,
-          },
-          deliveryCharge,
-          finalTotal: Math.round(finalTotal * 100) / 100,
-        },
-        message: "Order summary calculated successfully",
-        status: HTTP.OK,
-        success: true,
-      };
-    } catch (error) {
-      if (error instanceof AppError) throw error;
-      throw new AppError((error as Error).message, HTTP.INTERNAL_SERVER_ERROR);
-    }
-  }
-
   async createOrder(
     userId: string,
     orderData: {
-      cartId: string;
+      items: { productId: string; variantId: string; quantity: number }[];
       addressId: string;
       paymentMethod: "free" | "razorpay";
       couponCode?: string;
+      boxId?: string;
       browniePointsToUse?: number;
     }
   ): Promise<ServiceResponse> {
@@ -286,45 +80,26 @@ export class OrderUserService {
         { $group: { _id: null, total: { $sum: "$points" } } },
       ]);
 
-      const requestedPoints = orderData.browniePointsToUse
-        ? Number(orderData.browniePointsToUse)
-        : 0;
-      let browniePointsUsed = 0;
-      let brownieDiscount = 0;
+      const earned = totalEarned[0]?.total || 0;
+      const spent = totalSpent[0]?.total || 0;
+      const availablePoints = earned - spent;
+      const requestedPoints = Number(orderData.browniePointsToUse ?? 0);
 
-      if (requestedPoints > 0) {
-        if (requestedPoints < 0)
-          throw new AppError("Invalid brownie points value", HTTP.BAD_REQUEST);
+      if (isNaN(requestedPoints) || requestedPoints < 0)
+        throw new AppError("Invalid brownie points value", HTTP.BAD_REQUEST);
+      if (requestedPoints > availablePoints)
+        throw new AppError(
+          `Insufficient brownie points. Requested ${requestedPoints}, available ${availablePoints}`,
+          HTTP.BAD_REQUEST
+        );
 
-        const earned = totalEarned[0]?.total || 0;
-        const spent = totalSpent[0]?.total || 0;
-        const availablePoints = earned - spent;
-
-        if (requestedPoints > availablePoints)
-          throw new AppError(
-            `Insufficient brownie points. Requested ${requestedPoints}, available ${availablePoints}`,
-            HTTP.BAD_REQUEST
-          );
-
-        browniePointsUsed = requestedPoints;
-        brownieDiscount = browniePointsUsed;
-      }
-
-      // Get cart and validate
-      const cart = await this.cartModel
-        .findById(orderData.cartId)
-        .session(session);
-      if (!cart || cart.userId.toString() !== userId) {
-        throw new AppError("Cart not found", HTTP.NOT_FOUND);
-      }
-      if (!cart.items.length) {
-        throw new AppError("Cart is empty", HTTP.BAD_REQUEST);
-      }
+      const browniePointsUsed = requestedPoints;
+      const brownieDiscount = browniePointsUsed;
 
       const processedItems: any[] = [];
       let subtotal = 0;
 
-      for (const item of cart.items) {
+      for (const item of orderData.items) {
         const product = await this.productModel
           .findById(item.productId)
           .session(session);
@@ -344,7 +119,7 @@ export class OrderUserService {
           );
 
         const variant = product.variants.find(
-          (v) => v._id?.toString() === item.variant.toString()
+          (v) => v._id?.toString() === item.variantId
         );
         if (!variant)
           throw new AppError(
@@ -411,42 +186,29 @@ export class OrderUserService {
 
       const finalDiscountedAmount = discountedAmount - brownieDiscount;
 
-      const gstRate = Number(process.env.COMPANY_GST || "18");
+      const gstRate = 18;
       const gstTax = (finalDiscountedAmount * gstRate) / 100;
-      const businessState = process.env.COMPANY_STATE || "Karnataka";
-      const customerState = address.state;
-
-      let cgst = 0,
-        sgst = 0,
-        igst = 0;
-      if (businessState.toLowerCase() === customerState.toLowerCase()) {
-        // Intra-state: CGST + SGST
-        cgst = gstTax / 2;
-        sgst = gstTax / 2;
-      } else {
-        // Inter-state: IGST
-        igst = gstTax;
-      }
-
+      const cgst = gstTax / 2;
+      const sgst = gstTax / 2;
       const totalAmount = finalDiscountedAmount + gstTax;
 
-      // Auto-select box based on total item count
-      const totalItemCount = processedItems.reduce(
-        (sum, i) => sum + i.quantity,
-        0
-      );
-      const box = await this.boxModel
-        .findOne({
-          "itemCountRange.min": { $lte: totalItemCount },
-          "itemCountRange.max": { $gte: totalItemCount },
-        })
-        .session(session);
+      let box = null;
+      if (orderData.boxId) {
+        box = await this.boxModel.findById(orderData.boxId).session(session);
+        if (!box) throw new AppError("Box not found", HTTP.NOT_FOUND);
 
-      if (!box) {
-        throw new AppError(
-          "No suitable box found for the given item count",
-          HTTP.BAD_REQUEST
+        const itemCount = processedItems.reduce(
+          (sum, i) => sum + i.quantity,
+          0
         );
+        if (
+          itemCount < (box.itemCountRange?.min ?? 0) ||
+          itemCount > (box.itemCountRange?.max ?? Infinity)
+        )
+          throw new AppError(
+            `Selected box can hold ${box.itemCountRange?.min}-${box.itemCountRange?.max} items`,
+            HTTP.BAD_REQUEST
+          );
       }
 
       const totalWeight =
@@ -509,7 +271,7 @@ export class OrderUserService {
           gstTax,
           cgst,
           sgst,
-          igst,
+          igst: 0,
           deliveryCharge,
           totalAmount: finalTotalAmount,
         },
@@ -540,9 +302,6 @@ export class OrderUserService {
       });
 
       await newOrder.save({ session });
-
-      // Clear cart after successful order creation
-      await this.cartModel.findByIdAndDelete(orderData.cartId).session(session);
 
       if (coupon) {
         coupon.usedBy.push(new mongoose.Types.ObjectId(userId));
@@ -615,17 +374,12 @@ export class OrderUserService {
       // Verify Razorpay signature
       const razorpaySecret = process.env.RAZOR_PAY_SECRET_KEY;
       if (!razorpaySecret) {
-        throw new AppError(
-          "Razorpay secret not configured",
-          HTTP.INTERNAL_SERVER_ERROR
-        );
+        throw new AppError("Razorpay secret not configured", HTTP.INTERNAL_SERVER_ERROR);
       }
-
+      
       const generatedSignature = crypto
         .createHmac("sha256", razorpaySecret)
-        .update(
-          `${paymentData.razorpayOrderId}|${paymentData.razorpayPaymentId}`
-        )
+        .update(`${paymentData.razorpayOrderId}|${paymentData.razorpayPaymentId}`)
         .digest("hex");
 
       if (generatedSignature !== paymentData.razorpaySignature) {
@@ -645,9 +399,7 @@ export class OrderUserService {
 
       // ✅ NOW CREATE SHIPROCKET ORDER AFTER PAYMENT CONFIRMED
       try {
-        const user = await this.userModel
-          .findById(order.userId)
-          .session(session);
+        const user = await this.userModel.findById(order.userId).session(session);
         if (!user) throw new Error("User not found");
 
         const nameParts = (user.name || "Customer Customer").split(" ");
@@ -674,39 +426,28 @@ export class OrderUserService {
             name: item.name,
             sku: item.productId.toString(),
             units: parseInt(item.quantity.toString()),
-            selling_price: parseFloat(item.variant.price.toString()),
+            selling_price: parseFloat(item.variant.price.toString())
           })),
           sub_total: order.totalAmount.totalAmount,
-          length: order.box?.length || 15,
-          breadth: order.box?.breadth || 15,
-          height: order.box?.height || 15,
-          weight: Math.max(
-            0.5,
-            (order.items.reduce(
-              (sum, item) => sum + item.variant.weight * item.quantity,
-              0
-            ) +
-              (order.box?.weight || 0)) /
-              1000
-          ),
+          length: 15,
+          breadth: 15,
+          height: 15,
+          weight: Math.max(0.5, order.items.reduce((sum, item) => sum + (item.variant.weight * item.quantity), 0) / 1000)
         };
 
-        console.log(
-          "🚀 Creating Shiprocket order with data:",
-          JSON.stringify(shiprocketOrderData, null, 2)
+        console.log("🚀 Creating Shiprocket order with data:", JSON.stringify(shiprocketOrderData, null, 2));
+        
+        const shiprocketResponse = await createShiprocketOrder(
+          shiprocketOrderData
         );
-
-        const shiprocketResponse =
-          await createShiprocketOrder(shiprocketOrderData);
 
         console.log("📦 Shiprocket response:", shiprocketResponse);
 
         if (shiprocketResponse?.order_id && order.delivery) {
           order.delivery.shiprocketOrderId = shiprocketResponse.order_id;
-          order.delivery.shipmentId = shiprocketResponse.shipment_id;
           order.delivery.status = "confirmed";
           console.log(
-            `✅ Shiprocket order created - OrderID: ${shiprocketResponse.order_id}, ShipmentID: ${shiprocketResponse.shipment_id}`
+            `✅ Shiprocket order created after payment: ${shiprocketResponse.order_id}`
           );
         }
       } catch (shiprocketError: any) {
