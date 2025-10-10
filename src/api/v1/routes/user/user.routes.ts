@@ -4,6 +4,7 @@ import AuthController from "../../controllers/user/auth.user.controller";
 import userAddressRoutes from "./address.user.route";
 import userAuthRouter from "./auth.user.routes";
 import bannerUserRoutes from "./banner.user.routes";
+import cartUserRoutes from "./cart.user.route";
 import userCouponRouter from "./coupon.user.routes";
 import eventRouter from "./event.user.routes";
 import orderUserRoutes from "./order.user.route";
@@ -33,5 +34,6 @@ userRoutes.use("/banners", bannerUserRoutes);
 userRoutes.use("/reviews", reviewUserRoutes);
 userRoutes.use("/orders", orderUserRoutes);
 userRoutes.use("/events", eventRouter);
+userRoutes.use("/cart", cartUserRoutes);
 
 export default userRoutes;

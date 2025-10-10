@@ -7,24 +7,37 @@ import { OrderUserService } from "../../services/user/order.user.service";
 const orderUserService = new OrderUserService();
 
 export class OrderUserController {
+  // Calculate order summary before placing order
+  calculateOrderSummary = catchAsync(async (req: Request, res: Response) => {
+    const userId = req.user?.id;
+    const { cartId, addressId, couponCode, browniePointsToUse } = req.body;
+
+    const response = await orderUserService.calculateOrderSummary(userId, {
+      cartId,
+      addressId,
+      couponCode,
+      browniePointsToUse,
+    });
+
+    return ApiResponse.success({
+      res,
+      message: response.message,
+      data: response.data,
+      statusCode: response.status,
+    });
+  });
+
   // Create a new order
   createOrder = catchAsync(async (req: Request, res: Response) => {
     const userId = req.user?.id;
-    const {
-      items,
-      addressId,
-      paymentMethod,
-      couponCode,
-      boxId,
-      browniePointsToUse,
-    } = req.body;
+    const { cartId, addressId, paymentMethod, couponCode, browniePointsToUse } =
+      req.body;
 
     const orderData = {
-      items,
+      cartId,
       addressId,
       paymentMethod,
       couponCode,
-      boxId,
       browniePointsToUse,
     };
 

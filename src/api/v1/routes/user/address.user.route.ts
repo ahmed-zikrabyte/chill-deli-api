@@ -9,10 +9,9 @@ userAddressRoutes.post("/", userAddressController.createAddress);
 userAddressRoutes.patch("/:addressId", userAddressController.editAddress);
 userAddressRoutes.delete("/:addressId", userAddressController.deleteAddress);
 userAddressRoutes.get("/", userAddressController.getAddresses);
-
-userAddressRoutes.get(
-  "/calculate-fee/:addressId",
-  userAddressController.calculateDeliveryFee
+userAddressRoutes.post(
+  "/check-delivery-rates",
+  userAddressController.checkDeliveryRates
 );
 
 export default userAddressRoutes;
