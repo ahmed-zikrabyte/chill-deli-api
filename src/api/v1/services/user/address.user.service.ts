@@ -4,12 +4,7 @@ import { AppError } from "../../../../middleware/error.middleware";
 import { type Address, AddressModel } from "../../../../models/address.model";
 import { Cart } from "../../../../models/cart.model";
 import type { ServiceResponse } from "../../../../typings";
-import { calculateOrder, createOrder } from "../../../../utils/borzo/borzo";
-
-const BORZO_PICKUP = {
-  lat: 12.9716, // store latitude
-  lng: 77.5946, // store longitude
-};
+import { checkHyperlocalCourierAvailability } from "../../../../utils/shiprocket/courierAvailabilty";
 
 class UserAddressService {
   private readonly addressModel = AddressModel;
@@ -148,118 +143,44 @@ class UserAddressService {
     }
   };
 
-  // Check courier availability & calculate delivery fee using Borzo
-  checkCourierAvailability = async (addressId: string): ServiceResponse => {
-    if (!addressId) throw new AppError("Invalid input", HTTP.BAD_REQUEST);
-
-    const address = await this.addressModel.findById(addressId);
-    if (!address) throw new AppError("Address not found", HTTP.NOT_FOUND);
-    if (!address.latitude || !address.longitude)
-      throw new AppError(
-        "Address latitude and longitude required",
-        HTTP.BAD_REQUEST
-      );
-
-    const cart = await this.cartModel
-      .findOne({ userId: address.userId })
-      .populate("items.productId");
-    if (!cart || !cart.items.length)
-      throw new AppError("Cart is empty", HTTP.BAD_REQUEST);
-
-    // Prepare parcels for Borzo
-    const parcels = cart.items.map((item: any) => {
-      const product = item.productId;
-      const variant = product.variants.find(
-        (v: any) => v._id.toString() === item.variant.toString()
-      );
-      if (!variant)
-        throw new AppError(
-          `Variant not found for product ${product._id}`,
-          HTTP.BAD_REQUEST
-        );
-      return {
-        name: product.name,
-        quantity: item.quantity,
-        weight: Number(variant.weight[item.shape]) / 1000,
-      };
-    });
-
-    // Call Borzo calculate-order
+  // Check delivery rates
+  checkDeliveryRates = async (
+    delivery_pincode: string,
+    delivery_lat: number,
+    delivery_long: number,
+    weight: number = 1
+  ): ServiceResponse => {
     try {
-      const res = await calculateOrder({
-        pickup_point: BORZO_PICKUP,
-        drop_point: { lat: address.latitude, lng: address.longitude },
-        parcels,
-        cod_amount: 0,
-      });
-
-      return {
-        data: {
-          delivery_fee: res.delivery_fee_amount,
-          borzo_response: res,
-        },
-        message: "Courier availability & delivery fee fetched successfully",
-        status: HTTP.OK,
-        success: true,
-      };
-    } catch (error: any) {
-      throw new AppError(
-        error.response?.data?.message || error.message,
-        HTTP.INTERNAL_SERVER_ERROR
+      const courierData = await checkHyperlocalCourierAvailability(
+        delivery_pincode,
+        delivery_lat,
+        delivery_long,
+        weight
       );
-    }
-  };
 
-  // Create Borzo Order
-  createBorzoOrder = async (addressId: string): ServiceResponse => {
-    const address = await this.addressModel.findById(addressId);
-    if (!address) throw new AppError("Address not found", HTTP.NOT_FOUND);
-
-    const cart = await this.cartModel
-      .findOne({ userId: address.userId })
-      .populate("items.productId");
-    if (!cart || !cart.items.length)
-      throw new AppError("Cart is empty", HTTP.BAD_REQUEST);
-
-    const parcels = cart.items.map((item: any) => {
-      const product = item.productId;
-      const variant = product.variants.find(
-        (v: any) => v._id.toString() === item.variant.toString()
-      );
-      if (!variant)
+      if (courierData.status && courierData.data.length > 0) {
+        const courier = courierData.data[0];
+        return {
+          data: {
+            courier_name: courier.courier_name,
+            rate: courier.rates,
+            etd: courier.etd,
+            etd_hours: courier.etd_hours,
+            distance: courier.distance,
+          },
+          message: "Delivery rates fetched successfully",
+          status: HTTP.OK,
+          success: true,
+        };
+      } else {
         throw new AppError(
-          `Variant not found for product ${product._id}`,
-          HTTP.BAD_REQUEST
+          "No courier available for this location",
+          HTTP.NOT_FOUND
         );
-      return {
-        name: product.name,
-        quantity: item.quantity,
-        weight: Number(variant.weight[item.shape]) / 1000,
-      };
-    });
-
-    try {
-      const res = await createOrder({
-        pickup_point: BORZO_PICKUP,
-        drop_point: { lat: address.latitude, lng: address.longitude },
-        parcels,
-        cod_amount: 0,
-        customer_name: address.name,
-        customer_phone: address.phone,
-        customer_address: `${address.house}, ${address.area}, ${address.city}, ${address.state}, ${address.pincode}`,
-      });
-
-      return {
-        data: res,
-        message: "Borzo order created successfully",
-        status: HTTP.CREATED,
-        success: true,
-      };
-    } catch (error: any) {
-      throw new AppError(
-        error.response?.data?.message || error.message,
-        HTTP.INTERNAL_SERVER_ERROR
-      );
+      }
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError((error as Error).message, HTTP.INTERNAL_SERVER_ERROR);
     }
   };
 }

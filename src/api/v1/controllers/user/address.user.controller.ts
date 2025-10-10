@@ -61,21 +61,16 @@ export class UserAddressController {
     });
   });
 
-  calculateDeliveryFee = catchAsync(async (req: Request, res: Response) => {
-    const { addressId } = req.params;
-    const response =
-      await userAddressService.checkCourierAvailability(addressId);
-    return ApiResponse.success({
-      res,
-      message: response.message,
-      data: response.data,
-      statusCode: response.status,
-    });
-  });
+  checkDeliveryRates = catchAsync(async (req: Request, res: Response) => {
+    const { delivery_pincode, delivery_lat, delivery_long, weight } = req.body;
 
-  createBorzoOrder = catchAsync(async (req: Request, res: Response) => {
-    const { addressId } = req.params;
-    const response = await userAddressService.createBorzoOrder(addressId);
+    const response = await userAddressService.checkDeliveryRates(
+      delivery_pincode,
+      delivery_lat,
+      delivery_long,
+      weight
+    );
+
     return ApiResponse.success({
       res,
       message: response.message,

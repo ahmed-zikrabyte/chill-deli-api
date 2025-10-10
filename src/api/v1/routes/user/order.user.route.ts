@@ -5,6 +5,8 @@ const orderUserRoutes: express.Router = express.Router();
 
 const orderUserController = new OrderUserController();
 
+orderUserRoutes.post("/summary", orderUserController.calculateOrderSummary);
+
 orderUserRoutes.post("/", orderUserController.createOrder);
 
 orderUserRoutes.get("/", orderUserController.getUserOrders);

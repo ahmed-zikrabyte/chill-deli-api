@@ -32,7 +32,7 @@ export const protectUser = async (
     if (!token) {
       return ApiResponse.unauthorized({
         res,
-        message: "Not authorized to access this route",
+        message: "Not authorized — token missing",
       });
     }
 
@@ -50,11 +50,29 @@ export const protectUser = async (
     req.userRole = userDoc.role;
 
     next();
-  } catch (error) {
+  } catch (error: any) {
     console.error("User Auth Error:", error);
-    return ApiResponse.unauthorized({
+
+    if (error.name === "TokenExpiredError") {
+      return ApiResponse.unauthorized({
+        res,
+        message: "Token expired. Please log in again.",
+        error,
+      });
+    }
+
+    if (error.name === "JsonWebTokenError") {
+      return ApiResponse.unauthorized({
+        res,
+        message: "Invalid token. Please log in again.",
+        error,
+      });
+    }
+
+    return ApiResponse.error({
       res,
-      message: "Not authorized to access this route",
+      message: "Authentication failed. Please try again.",
+      error,
     });
   }
 };

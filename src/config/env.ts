@@ -91,4 +91,13 @@ export const ENV = {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000", 10), // 15 minutes
     max: parseInt(process.env.RATE_LIMIT_MAX || "100", 10),
   },
+  shiprocket: {
+    pickupPincode: process.env.SHIPROCKET_PICKUP_PINCODE,
+    pickupLat: process.env.SHIPROCKET_PICKUP_LAT
+      ? parseFloat(process.env.SHIPROCKET_PICKUP_LAT)
+      : undefined,
+    pickupLong: process.env.SHIPROCKET_PICKUP_LONG
+      ? parseFloat(process.env.SHIPROCKET_PICKUP_LONG)
+      : undefined,
+  },
 };
